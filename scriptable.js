@@ -50,6 +50,15 @@ function getDayEvents(events, day) {
   return events.filter(event => event.start.getDay() === day);
 }
 
+// Correction pour comparer les événements par rapport au fuseau horaire du jour actuel
+function isSameDay(date1, date2) {
+  return (
+    date1.getDate() === date2.getDate() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getFullYear() === date2.getFullYear()
+  );
+}
+
 // Création du widget avec un style et une mise en page similaires au widget CitiBike
 async function createWidget(events) {
   let darkBlue = new Color("#333d72", 1);
@@ -79,7 +88,7 @@ async function createWidget(events) {
 
   // Affichage des événements du jour
   const today = new Date();
-  const dayEvents = getDayEvents(events, today.getDay());
+  const dayEvents = events.filter(event => isSameDay(event.start, today));
   
   if (dayEvents.length > 0) {
     dayEvents.forEach(event => {
