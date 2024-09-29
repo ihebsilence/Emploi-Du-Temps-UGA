@@ -2,15 +2,18 @@
 // These must be at the very top of the file. Do not edit.
 // icon-color: orange; icon-glyph: hourglass-half;
 
+// Remplace ceci par l'URL de ton calendrier
 const widgetInputRAW = args.widgetParameter;
-const icsURL = widgetInputRAW || 'https://ton-url-de-emploi-du-temps/ADECal.ics'; // Remplace cette URL par celle de ton calendrier
+const icsURL = widgetInputRAW || 'https://GHSAT0AAAAAACXZPEDIO2L2SHFINCHEJIIMZXZ25DQ:x-oauth-basic@raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps-UGA/main/ADE.ics';
 
+// Fonction pour récupérer le fichier ICS
 async function fetchICSFile(url) {
   const req = new Request(url);
   const icsData = await req.loadString();
   return icsData;
 }
 
+// Fonction pour analyser le fichier ICS
 function parseICS(icsData) {
   const events = [];
   const eventRegex = /BEGIN:VEVENT[\s\S]*?END:VEVENT/g;
@@ -36,6 +39,7 @@ function parseICS(icsData) {
   return events;
 }
 
+// Fonction pour obtenir les événements de cette semaine
 function getEventsThisWeek(events) {
   const now = new Date();
   const endOfWeek = new Date(now);
@@ -96,6 +100,7 @@ if (weeklyEvents.length > 0) {
 
 widget.addSpacer();
 
+// Présenter le widget ou le définir
 if (!config.runsInWidget) {
   await widget.presentMedium();
 } else {
