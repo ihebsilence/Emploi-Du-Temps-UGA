@@ -1,74 +1,68 @@
-/*
- *
- * Bienvenue sur le Widget Cours Cal. Ce script configure un widget qui affiche tes cours et passe automatiquement d'un jour à l'autre toutes les 5 secondes.
- * Tu peux personnaliser les éléments de ce widget dans la section `layout`.
- *
- */
+// Variables utilisées par Scriptable.
+// icon-color: deep-green; icon-glyph: magic;
 
-// Spécifie la mise en page des éléments du widget.
-const layout = `
-  row
-    column
-      date
-      battery
-      events
+const widgetInputRAW = args.widgetParameter;
+const icsURL = widgetInputRAW || 'https://raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps-UGA/main/ADE.ics';
 
-    column(90)
-      current
-      future
-`
-
-/*
- * CODE
- * Ne modifie cette section qu'avec prudence.
- * =========================================
- */
-
-// Variables de configuration
-const codeFilename = "Widget UGA"
-const gitHubUrl = "https://raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps-UGA/refs/heads/main/emploidutemps.js"
-
-// Gestion des fichiers iCloud
-let files = FileManager.local()
-const iCloudInUse = files.isFileStoredIniCloud(module.filename)
-
-// Si iCloud est utilisé, bascule vers le FileManager iCloud
-files = iCloudInUse ? FileManager.iCloud() : files
-
-// Vérifie si le code du widget existe et le télécharge si nécessaire.
-const pathToCode = files.joinPath(files.documentsDirectory(), codeFilename + ".js")
-if (!files.fileExists(pathToCode)) {
-  const req = new Request(gitHubUrl)
-  const codeString = await req.loadString()
-  files.writeString(pathToCode, codeString)
+// Fonction pour récupérer le fichier ICS
+async function fetchICSFile(url) {
+  const req = new Request(url);
+  const icsData = await req.loadString();
+  return icsData;
 }
 
-// Import du module
-if (iCloudInUse) { await files.downloadFileFromiCloud(pathToCode) }
-const code = importModule(codeFilename)
+// Fonction pour analyser le fichier ICS
+function parseICS(icsData) {
+  const events = [];
+  const eventRegex = /BEGIN:VEVENT[\s\S]*?END:VEVENT/g;
+  const matches = icsData.match(eventRegex);
 
-// Initialisation ou menu des paramètres
-let preview
-if (config.runsInApp) {
-  preview = await code.runSetup(Script.name(), iCloudInUse, codeFilename, gitHubUrl)
-  if (!preview) return
+  if (matches) {
+    matches.forEach(eventData => {
+      const event = {};
+      const summaryMatch = eventData.match(/SUMMARY:(.*)/);
+      const startMatch = eventData.match(/DTSTART.*:(.*)/);
+      const endMatch = eventData.match(/DTEND.*:(.*)/);
+
+      if (summaryMatch) event.title = summaryMatch[1].trim();
+      if (startMatch) event.start = new Date(startMatch[1].trim());
+      if (endMatch) event.end = new Date(endMatch[1].trim());
+
+      if (event.title && event.start) {
+        events.push(event);
+      }
+    });
+  }
+  
+  return events;
 }
 
-// Création du widget avec une mise à jour automatique toutes les 5 secondes
-const widget = await code.createWidget(layout, Script.name(), iCloudInUse)
-Script.setWidget(widget)
+// Fonction pour obtenir les événements de cette semaine
+function getEventsThisWeek(events) {
+  const now = new Date();
+  const endOfWeek = new Date(now);
+  endOfWeek.setDate(now.getDate() + 7);
 
-// Fonction pour le défilement des jours
-async function autoUpdateWidget(dayIndex) {
-  const today = new Date();
+  return events.filter(event => event.start >= now && event.start <= endOfWeek);
+}
+
+// Fonction pour obtenir les événements d'un jour spécifique
+function getDayEvents(events, day) {
+  return events.filter(event => event.start.getDay() === day);
+}
+
+// Ajout d'une fonction de mise à jour automatique pour changer de jour toutes les 5 secondes
+async function updateWidget(widget, dayIndex) {
+  const dayEvents = getDayEvents(weeklyEvents, dayIndex % 7);
+
+  // Efface le contenu précédent
   widget.removeAllSubviews();
 
   widget.addText(`📅 Cours du ${['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][dayIndex % 7]}`).font = Font.boldSystemFont(16);
   widget.addSpacer(5);
 
-  const eventsToday = await code.getEventsForDay(dayIndex % 7); // Appel aux événements du jour
-  if (eventsToday.length > 0) {
-    eventsToday.forEach(event => {
+  if (dayEvents.length > 0) {
+    dayEvents.forEach(event => {
       const eventStack = widget.addStack();
       eventStack.layoutHorizontally();
       
@@ -86,22 +80,43 @@ async function autoUpdateWidget(dayIndex) {
       eventTitleText.textColor = Color.white();
     });
   } else {
-    widget.addText("Aucun cours aujourd'hui. 😌").font = Font.regularSystemFont(14);
+    let noEventsText = widget.addText("Aucun cours aujourd'hui. 😌");
+    noEventsText.font = Font.regularSystemFont(14);
+    noEventsText.textColor = Color.white();
   }
 
   widget.addSpacer();
 
-  // Mise à jour du widget chaque 5 secondes
-  setTimeout(() => autoUpdateWidget(dayIndex + 1), 5000);
+  // Requête pour une mise à jour toutes les 5 secondes (fonctionne dans l'app mais pas sur l'écran d'accueil)
+  setTimeout(() => updateWidget(widget, dayIndex + 1), 5000);
 }
 
-// Si on est dans l'app, affiche un aperçu du widget avec la mise à jour automatique
-if (config.runsInApp) {
-  await autoUpdateWidget(new Date().getDay());
+// Récupération et analyse des données ICS
+const icsData = await fetchICSFile(icsURL);
+const events = parseICS(icsData);
+const weeklyEvents = getEventsThisWeek(events);
 
-  if (preview == "small") { widget.presentSmall() }
-  else if (preview == "medium") { widget.presentMedium() }
-  else { widget.presentLarge() }
+// Création du widget
+let widget = new ListWidget();
+widget.setPadding(10, 10, 10, 10);
+
+// Style du widget
+const gradient = new LinearGradient();
+gradient.locations = [0, 1];
+gradient.colors = [
+  new Color('17A589'),
+  new Color('48C9B0')
+];
+widget.backgroundGradient = gradient;
+
+// Initialisation avec le jour actuel
+const todayIndex = new Date().getDay();
+updateWidget(widget, todayIndex);
+
+// Présentation du widget
+if (!config.runsInWidget) {
+  await widget.presentMedium();
+} else {
+  Script.setWidget(widget);
+  Script.complete();
 }
-
-Script.complete();
