@@ -1,24 +1,25 @@
-// Variables used by Scriptable.
-// These must be at the very top of the file. Do not edit.
-// icon-color: purple; icon-glyph: cloud-download;
+// URL du script à télécharger
+const url = 'https://raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps-UGA/refs/heads/main/emploidutemps.js';
 
-const scriptURL = "https://raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps-UGA/refs/heads/main/emploidutemps.js";
+// Initialiser le gestionnaire de fichiers
+const fm = FileManager.local();
+const libPath = fm.joinPath(fm.libraryDirectory(), 'EmploiDuTemps'); // Répertoire pour le script
 
-async function fetchAndRunScript(url) {
-    const req = new Request(url);
-    
-    try {
-        const scriptContent = await req.loadString();
-        console.log("Script downloaded successfully.");
-        
-        // Affichage du contenu du script pour vérification
-        console.log(scriptContent);
+// Créer le répertoire s'il n'existe pas
+fm.createDirectory(libPath, true);
 
-        eval(scriptContent); // Évalue le script téléchargé
-    } catch (error) {
-        console.error("Error during fetching or executing script: ", error);
-    }
-}
+// Télécharger le contenu du script
+let req = new Request(url);
+let content = await req.loadString();
 
-// Récupérer et exécuter le script
-await fetchAndRunScript(scriptURL);
+// Nom du fichier à sauvegarder
+const filename = url.split('/').pop();
+const scriptPath = fm.joinPath(libPath, filename);
+
+// Écrire le contenu du script dans un fichier local
+fm.writeString(scriptPath, content);
+
+// Importer et exécuter le script téléchargé
+const scriptModule = importModule(scriptPath);
+await scriptModule.main(); // Assure-toi que le script a une fonction main()
+Script.complete();
