@@ -1,8 +1,7 @@
 // Variables utilisées par Scriptable.
 // icon-color: deep-green; icon-glyph: magic;
 
-const widgetInputRAW = args.widgetParameter;
-const icsURL = widgetInputRAW || 'https://raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps-UGA/main/ADE.ics';
+const icsURL = 'https://raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps-UGA/main/ADE.ics';
 
 // Fonction pour récupérer le fichier ICS
 async function fetchICSFile(url) {
@@ -51,72 +50,80 @@ function getDayEvents(events, day) {
   return events.filter(event => event.start.getDay() === day);
 }
 
-// Ajout d'une fonction de mise à jour automatique pour changer de jour toutes les 5 secondes
-async function updateWidget(widget, dayIndex) {
-  const dayEvents = getDayEvents(weeklyEvents, dayIndex % 7);
+// Création du widget avec un style et une mise en page similaires au widget CitiBike
+async function createWidget(events) {
+  let darkBlue = new Color("#333d72", 1);
+  let lightBlue = new Color("#3d99ce", 1);
+  
+  let gradient = new LinearGradient();
+  gradient.colors = [Color.dynamic(Color.white(), darkBlue), Color.dynamic(Color.white(), lightBlue)];
+  gradient.locations = [0, 1];
+  
+  let widget = new ListWidget();
+  widget.backgroundGradient = gradient;
 
-  // Efface le contenu précédent
-  widget.removeAllSubviews();
+  // Style et couleur des textes
+  let titleFont = Font.boldSystemFont(18);
+  let eventFont = Font.regularSystemFont(14);
+  let titleColor = Color.white();
+  let eventColor = Color.white();
 
-  widget.addText(`📅 Cours du ${['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][dayIndex % 7]}`).font = Font.boldSystemFont(16);
-  widget.addSpacer(5);
+  // Ajout du titre
+  let header = widget.addStack();
+  header.centerAlignContent();
+  let title = header.addText(`📅 Cours de la semaine`);
+  title.font = titleFont;
+  title.textColor = titleColor;
 
+  widget.addSpacer(10);
+
+  // Affichage des événements du jour
+  const today = new Date();
+  const dayEvents = getDayEvents(events, today.getDay());
+  
   if (dayEvents.length > 0) {
     dayEvents.forEach(event => {
-      const eventStack = widget.addStack();
+      let eventStack = widget.addStack();
       eventStack.layoutHorizontally();
+      eventStack.centerAlignContent();
       
+      // Date et heure de l'événement
       const dateFormatter = new DateFormatter();
-      dateFormatter.dateFormat = "E dd/MM HH:mm";
+      dateFormatter.dateFormat = "HH:mm";
+      
+      let eventTime = eventStack.addText(`🕒 ${dateFormatter.string(event.start)}`);
+      eventTime.font = eventFont;
+      eventTime.textColor = eventColor;
 
-      let eventDateText = eventStack.addText(`🕒 ${dateFormatter.string(event.start)}`);
-      eventDateText.font = Font.regularSystemFont(14);
-      eventDateText.textColor = Color.white();
-      
-      eventStack.addSpacer();
-      
-      let eventTitleText = eventStack.addText(`📚 ${event.title}`);
-      eventTitleText.font = Font.regularSystemFont(14);
-      eventTitleText.textColor = Color.white();
+      eventStack.addSpacer(10);
+
+      // Titre de l'événement
+      let eventTitle = eventStack.addText(`📚 ${event.title}`);
+      eventTitle.font = eventFont;
+      eventTitle.textColor = eventColor;
     });
   } else {
-    let noEventsText = widget.addText("Aucun cours aujourd'hui. 😌");
-    noEventsText.font = Font.regularSystemFont(14);
-    noEventsText.textColor = Color.white();
+    let noEventText = widget.addText("Aucun cours aujourd'hui 😌");
+    noEventText.font = eventFont;
+    noEventText.textColor = eventColor;
   }
 
   widget.addSpacer();
 
-  // Requête pour une mise à jour toutes les 5 secondes (fonctionne dans l'app mais pas sur l'écran d'accueil)
-  setTimeout(() => updateWidget(widget, dayIndex + 1), 5000);
+  return widget;
 }
 
-// Récupération et analyse des données ICS
+// Récupération et affichage des événements
 const icsData = await fetchICSFile(icsURL);
 const events = parseICS(icsData);
 const weeklyEvents = getEventsThisWeek(events);
 
-// Création du widget
-let widget = new ListWidget();
-widget.setPadding(10, 10, 10, 10);
-
-// Style du widget
-const gradient = new LinearGradient();
-gradient.locations = [0, 1];
-gradient.colors = [
-  new Color('17A589'),
-  new Color('48C9B0')
-];
-widget.backgroundGradient = gradient;
-
-// Initialisation avec le jour actuel
-const todayIndex = new Date().getDay();
-updateWidget(widget, todayIndex);
-
-// Présentation du widget
-if (!config.runsInWidget) {
-  await widget.presentMedium();
-} else {
+if (config.runsInWidget) {
+  let widget = await createWidget(weeklyEvents);
   Script.setWidget(widget);
-  Script.complete();
+} else {
+  let widget = await createWidget(weeklyEvents);
+  await widget.presentMedium();
 }
+
+Script.complete();
