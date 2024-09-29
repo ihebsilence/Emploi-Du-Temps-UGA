@@ -25,7 +25,7 @@ function parseICS(icsData) {
       const locationMatch = eventData.match(/LOCATION:(.*)/);
 
       if (summaryMatch) event.title = summaryMatch[1].trim();
-      if (startMatch) event.start = new Date(startMatch[1].trim());  // Convertir en objet Date
+      if (startMatch) event.start = new Date(startMatch[1].trim()); // Convertir en objet Date
       if (endMatch) event.end = new Date(endMatch[1].trim());
       if (locationMatch) event.location = locationMatch[1].trim();
 
@@ -38,16 +38,18 @@ function parseICS(icsData) {
   return events;
 }
 
-// Fonction pour vérifier si deux dates sont le même jour
-function isSameDay(date1, date2) {
-  return (
-    date1.getDate() === date2.getDate() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getFullYear() === date2.getFullYear()
-  );
+// Fonction pour vérifier si une date est dans la même semaine
+function isSameWeek(date) {
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay()); // Début de la semaine (dimanche)
+  const endOfWeek = new Date(now);
+  endOfWeek.setDate(now.getDate() + (6 - now.getDay())); // Fin de la semaine (samedi)
+
+  return date >= startOfWeek && date <= endOfWeek;
 }
 
-// Création du widget pour afficher les événements du jour
+// Création du widget pour afficher les événements de la semaine
 async function createWidget(events) {
   let darkBlue = new Color("#333d72", 1);
   let lightBlue = new Color("#3d99ce", 1);
@@ -68,18 +70,17 @@ async function createWidget(events) {
   // Ajout du titre
   let header = widget.addStack();
   header.centerAlignContent();
-  let title = header.addText(`📅 Cours du jour`);
+  let title = header.addText(`📅 Cours de la semaine`);
   title.font = titleFont;
   title.textColor = titleColor;
 
   widget.addSpacer(10);
 
-  // Vérification des événements du jour
-  const today = new Date();  // Date et heure actuelles
-  const dayEvents = events.filter(event => isSameDay(event.start, today));
+  // Vérification des événements de la semaine
+  const weekEvents = events.filter(event => isSameWeek(event.start));
 
-  if (dayEvents.length > 0) {
-    dayEvents.forEach(event => {
+  if (weekEvents.length > 0) {
+    weekEvents.forEach(event => {
       let eventStack = widget.addStack();
       eventStack.layoutHorizontally();
       eventStack.centerAlignContent();
@@ -88,7 +89,7 @@ async function createWidget(events) {
       const dateFormatter = new DateFormatter();
       dateFormatter.dateFormat = "HH:mm";
 
-      let eventTime = eventStack.addText(`🕒 ${dateFormatter.string(event.start)}`);
+      let eventTime = eventStack.addText(`🕒 ${dateFormatter.string(event.start)} - ${dateFormatter.string(event.end)}`);
       eventTime.font = eventFont;
       eventTime.textColor = eventColor;
 
@@ -99,10 +100,6 @@ async function createWidget(events) {
       eventTitle.font = eventFont;
       eventTitle.textColor = eventColor;
     });
-  } else {
-    let noEventText = widget.addText("Aucun cours aujourd'hui 😌");
-    noEventText.font = eventFont;
-    noEventText.textColor = eventColor;
   }
 
   widget.addSpacer();
