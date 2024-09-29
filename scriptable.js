@@ -1,18 +1,25 @@
-// Ton code ici
+// URL de ton script sur GitHub
+const url = 'https://raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps-UGA/refs/heads/main/emploidutemps.js';
 
-// Fonction exportée pour exécuter le script
-export async function createWidget() {
-    // Récupération et affichage des événements
-    const icsData = await fetchICSFile(icsURL);
-    const events = parseICS(icsData);
+// Gestionnaire de fichiers
+const fm = FileManager.local();
+const libPath = fm.joinPath(fm.libraryDirectory(), 'EmploiDuTemps'); // Répertoire pour le script
 
-    if (config.runsInWidget) {
-        let widget = await createWidget(events);
-        Script.setWidget(widget);
-    } else {
-        let widget = await createWidget(events);
-        await widget.presentMedium();
-    }
+// Créer le répertoire s'il n'existe pas
+fm.createDirectory(libPath, true);
 
-    Script.complete();
-}
+// Télécharger le contenu du script
+let req = new Request(url);
+let content = await req.loadString();
+
+// Nom du fichier à sauvegarder
+const filename = url.split('/').pop();
+const scriptPath = fm.joinPath(libPath, filename);
+
+// Écrire le contenu du script dans un fichier local
+fm.writeString(scriptPath, content);
+
+// Importer et exécuter le script téléchargé
+const scriptModule = importModule(scriptPath);
+await scriptModule.createWidget(); // Assure-toi que ton script a une fonction createWidget() ou main()
+Script.complete();
