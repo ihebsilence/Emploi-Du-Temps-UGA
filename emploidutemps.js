@@ -4,7 +4,7 @@
 
 // Remplace ceci par l'URL de ton calendrier
 const widgetInputRAW = args.widgetParameter;
-const icsURL = widgetInputRAW || 'https://GHSAT0AAAAAACXZPEDIO2L2SHFINCHEJIIMZXZ25DQ:x-oauth-basic@raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps-UGA/main/ADE.ics';
+const icsURL = widgetInputRAW || 'https://raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps-UGA/main/ADE.ics';
 
 // Fonction pour récupérer le fichier ICS
 async function fetchICSFile(url) {
