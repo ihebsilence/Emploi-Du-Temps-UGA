@@ -1,5 +1,4 @@
 // Variables used by Scriptable.
-// These must be at the very top of the file. Do not edit.
 // icon-color: deep-green; icon-glyph: magic;
 
 const widgetInputRAW = args.widgetParameter;
@@ -47,19 +46,56 @@ function getEventsThisWeek(events) {
   return events.filter(event => event.start >= now && event.start <= endOfWeek);
 }
 
-// Récupérer les données ICS
+// Fonction pour obtenir les événements d'un jour spécifique
+function getDayEvents(events, day) {
+  return events.filter(event => event.start.getDay() === day);
+}
+
+// Ajout d'une fonction de mise à jour automatique pour changer de jour toutes les 5 secondes
+async function updateWidget(widget, dayIndex) {
+  const today = new Date();
+  const dayEvents = getDayEvents(weeklyEvents, dayIndex % 7);
+
+  // Efface le contenu précédent
+  widget.removeAllSubviews();
+
+  widget.addText(`📅 Cours du ${['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][dayIndex % 7]}`).font = Font.boldSystemFont(16);
+  widget.addSpacer(5);
+
+  if (dayEvents.length > 0) {
+    dayEvents.forEach(event => {
+      const eventStack = widget.addStack();
+      eventStack.layoutHorizontally();
+      
+      const dateFormatter = new DateFormatter();
+      dateFormatter.dateFormat = "E dd/MM HH:mm";
+
+      let eventDateText = eventStack.addText(`🕒 ${dateFormatter.string(event.start)}`);
+      eventDateText.font = Font.regularSystemFont(14);
+      eventDateText.textColor = Color.white();
+      
+      eventStack.addSpacer();
+      
+      let eventTitleText = eventStack.addText(`📚 ${event.title}`);
+      eventTitleText.font = Font.regularSystemFont(14);
+      eventTitleText.textColor = Color.white();
+    });
+  } else {
+    let noEventsText = widget.addText("Aucun cours aujourd'hui. 😌");
+    noEventsText.font = Font.regularSystemFont(14);
+    noEventsText.textColor = Color.white();
+  }
+
+  widget.addSpacer();
+
+  // Requête le widget pour une mise à jour toutes les 5 secondes
+  setTimeout(() => updateWidget(widget, dayIndex + 1), 5000);
+}
+
+// Récupération et analyse des données ICS
 const icsData = await fetchICSFile(icsURL);
-
-// Analyser le fichier ICS pour extraire les événements
 const events = parseICS(icsData);
-
-// Filtrer les événements de la semaine
 const weeklyEvents = getEventsThisWeek(events);
-
-// Détermination du jour actuel pour le défilement
-const today = new Date();
-const dayOfWeek = today.getDay(); // 0 (dimanche) à 6 (samedi)
-const dayEvents = weeklyEvents.filter(event => event.start.getDay() === dayOfWeek);
 
 // Création du widget
 let widget = new ListWidget();
@@ -74,42 +110,14 @@ gradient.colors = [
 ];
 widget.backgroundGradient = gradient;
 
-// Affichage des événements du jour
-widget.addText("Cours du jour").font = Font.boldSystemFont(16);
-widget.addSpacer(5);
+// Initialisation avec le jour actuel
+const todayIndex = new Date().getDay();
+updateWidget(widget, todayIndex);
 
-if (dayEvents.length > 0) {
-  dayEvents.forEach(event => {
-    const eventStack = widget.addStack();
-    eventStack.layoutHorizontally();
-    
-    const dateFormatter = new DateFormatter();
-    dateFormatter.dateFormat = "E dd/MM HH:mm";
-
-    let eventDateText = eventStack.addText(`${dateFormatter.string(event.start)}`);
-    eventDateText.font = Font.regularSystemFont(14);
-    eventDateText.textColor = Color.white();
-    
-    eventStack.addSpacer();
-    
-    let eventTitleText = eventStack.addText(event.title);
-    eventTitleText.font = Font.regularSystemFont(14);
-    eventTitleText.textColor = Color.white();
-  });
-} else {
-  let noEventsText = widget.addText("Aucun cours aujourd'hui.");
-  noEventsText.font = Font.regularSystemFont(14);
-  noEventsText.textColor = Color.white();
-}
-
-widget.addSpacer();
-
-// Présenter le widget ou le définir
+// Présentation du widget
 if (!config.runsInWidget) {
   await widget.presentMedium();
 } else {
   Script.setWidget(widget);
   Script.complete();
 }
-
-// Pour le défilement, tu pourrais envisager de programmer un autre script qui met à jour le widget chaque jour
