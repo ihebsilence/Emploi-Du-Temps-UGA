@@ -32,7 +32,7 @@ function parseICS(icsData) {
       }
     });
   }
-  
+
   return events;
 }
 
@@ -45,12 +45,7 @@ function getEventsThisWeek(events) {
   return events.filter(event => event.start >= now && event.start <= endOfWeek);
 }
 
-// Fonction pour obtenir les événements d'un jour spécifique
-function getDayEvents(events, day) {
-  return events.filter(event => event.start.getDay() === day);
-}
-
-// Correction pour comparer les événements par rapport au fuseau horaire du jour actuel
+// Fonction pour vérifier si deux dates sont dans le même jour
 function isSameDay(date1, date2) {
   return (
     date1.getDate() === date2.getDate() &&
@@ -59,15 +54,26 @@ function isSameDay(date1, date2) {
   );
 }
 
+// Fonction pour afficher les informations de débogage des dates
+function logEventDates(events) {
+  console.log("===== Débogage des événements =====");
+  events.forEach(event => {
+    console.log(`Titre: ${event.title}`);
+    console.log(`Date de début: ${event.start}`);
+    console.log(`Aujourd'hui: ${new Date()}`);
+    console.log(`Même jour ? ${isSameDay(event.start, new Date())}`);
+  });
+}
+
 // Création du widget avec un style et une mise en page similaires au widget CitiBike
 async function createWidget(events) {
   let darkBlue = new Color("#333d72", 1);
   let lightBlue = new Color("#3d99ce", 1);
-  
+
   let gradient = new LinearGradient();
   gradient.colors = [Color.dynamic(Color.white(), darkBlue), Color.dynamic(Color.white(), lightBlue)];
   gradient.locations = [0, 1];
-  
+
   let widget = new ListWidget();
   widget.backgroundGradient = gradient;
 
@@ -95,11 +101,11 @@ async function createWidget(events) {
       let eventStack = widget.addStack();
       eventStack.layoutHorizontally();
       eventStack.centerAlignContent();
-      
+
       // Date et heure de l'événement
       const dateFormatter = new DateFormatter();
       dateFormatter.dateFormat = "HH:mm";
-      
+
       let eventTime = eventStack.addText(`🕒 ${dateFormatter.string(event.start)}`);
       eventTime.font = eventFont;
       eventTime.textColor = eventColor;
@@ -126,6 +132,9 @@ async function createWidget(events) {
 const icsData = await fetchICSFile(icsURL);
 const events = parseICS(icsData);
 const weeklyEvents = getEventsThisWeek(events);
+
+// Journalisation des dates pour le débogage
+logEventDates(weeklyEvents);
 
 if (config.runsInWidget) {
   let widget = await createWidget(weeklyEvents);
