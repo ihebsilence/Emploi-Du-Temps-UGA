@@ -1,8 +1,7 @@
-// Variables used by Scriptable.
+// Variables utilisées par Scriptable.
 // icon-color: deep-green; icon-glyph: magic;
 
-const widgetInputRAW = args.widgetParameter;
-const icsURL = widgetInputRAW || 'https://raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps-UGA/main/ADE.ics';
+const icsURL = 'https://raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps-UGA/main/ADE.ics';
 
 // Fonction pour récupérer le fichier ICS
 async function fetchICSFile(url) {
@@ -23,101 +22,112 @@ function parseICS(icsData) {
       const summaryMatch = eventData.match(/SUMMARY:(.*)/);
       const startMatch = eventData.match(/DTSTART.*:(.*)/);
       const endMatch = eventData.match(/DTEND.*:(.*)/);
+      const locationMatch = eventData.match(/LOCATION:(.*)/);
 
       if (summaryMatch) event.title = summaryMatch[1].trim();
       if (startMatch) event.start = new Date(startMatch[1].trim());
       if (endMatch) event.end = new Date(endMatch[1].trim());
+      if (locationMatch) event.location = locationMatch[1].trim();
 
       if (event.title && event.start) {
         events.push(event);
       }
     });
   }
-  
+
   return events;
 }
 
-// Fonction pour obtenir les événements de cette semaine
-function getEventsThisWeek(events) {
-  const now = new Date();
-  const endOfWeek = new Date(now);
-  endOfWeek.setDate(now.getDate() + 7);
-
-  return events.filter(event => event.start >= now && event.start <= endOfWeek);
+// Fonction pour vérifier si deux dates sont dans le même jour
+function isSameDay(date1, date2) {
+  return (
+    date1.getDate() === date2.getDate() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getFullYear() === date2.getFullYear()
+  );
 }
 
-// Fonction pour obtenir les événements d'un jour spécifique
-function getDayEvents(events, day) {
-  return events.filter(event => event.start.getDay() === day);
-}
+// Création du widget
+async function createWidget(events) {
+  let darkBlue = new Color("#333d72", 1);
+  let lightBlue = new Color("#3d99ce", 1);
 
-// Ajout d'une fonction de mise à jour automatique pour changer de jour toutes les 5 secondes
-async function updateWidget(widget, dayIndex) {
+  let gradient = new LinearGradient();
+  gradient.colors = [Color.dynamic(Color.white(), darkBlue), Color.dynamic(Color.white(), lightBlue)];
+  gradient.locations = [0, 1];
+
+  let widget = new ListWidget();
+  widget.backgroundGradient = gradient;
+
+  // Style et couleur des textes
+  let titleFont = Font.boldSystemFont(18);
+  let eventFont = Font.regularSystemFont(14);
+  let titleColor = Color.white();
+  let eventColor = Color.white();
+
+  // Ajout du titre
+  let header = widget.addStack();
+  header.centerAlignContent();
+  let title = header.addText(`📅 Cours du jour`);
+  title.font = titleFont;
+  title.textColor = titleColor;
+
+  widget.addSpacer(10);
+
+  // Affichage des événements du jour
   const today = new Date();
-  const dayEvents = getDayEvents(weeklyEvents, dayIndex % 7);
-
-  // Efface le contenu précédent
-  widget.removeAllSubviews();
-
-  widget.addText(`📅 Cours du ${['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][dayIndex % 7]}`).font = Font.boldSystemFont(16);
-  widget.addSpacer(5);
-
+  const dayEvents = events.filter(event => isSameDay(event.start, today));
+  
   if (dayEvents.length > 0) {
     dayEvents.forEach(event => {
-      const eventStack = widget.addStack();
+      let eventStack = widget.addStack();
       eventStack.layoutHorizontally();
-      
-      const dateFormatter = new DateFormatter();
-      dateFormatter.dateFormat = "E dd/MM HH:mm";
+      eventStack.centerAlignContent();
 
-      let eventDateText = eventStack.addText(`🕒 ${dateFormatter.string(event.start)}`);
-      eventDateText.font = Font.regularSystemFont(14);
-      eventDateText.textColor = Color.white();
-      
-      eventStack.addSpacer();
-      
-      let eventTitleText = eventStack.addText(`📚 ${event.title}`);
-      eventTitleText.font = Font.regularSystemFont(14);
-      eventTitleText.textColor = Color.white();
+      // Date et heure de l'événement
+      const dateFormatter = new DateFormatter();
+      dateFormatter.dateFormat = "HH:mm";
+
+      let eventTime = eventStack.addText(`🕒 ${dateFormatter.string(event.start)} - ${dateFormatter.string(event.end)}`);
+      eventTime.font = eventFont;
+      eventTime.textColor = eventColor;
+
+      eventStack.addSpacer(10);
+
+      // Titre de l'événement
+      let eventTitle = eventStack.addText(`📚 ${event.title}`);
+      eventTitle.font = eventFont;
+      eventTitle.textColor = eventColor;
+
+      // Lieu de l'événement
+      if (event.location) {
+        eventStack.addSpacer(10);
+        let eventLocation = eventStack.addText(`📍 ${event.location}`);
+        eventLocation.font = eventFont;
+        eventLocation.textColor = eventColor;
+      }
     });
   } else {
-    let noEventsText = widget.addText("Aucun cours aujourd'hui. 😌");
-    noEventsText.font = Font.regularSystemFont(14);
-    noEventsText.textColor = Color.white();
+    let noEventText = widget.addText("Aucun cours aujourd'hui 😌");
+    noEventText.font = eventFont;
+    noEventText.textColor = eventColor;
   }
 
   widget.addSpacer();
 
-  // Requête le widget pour une mise à jour toutes les 5 secondes
-  setTimeout(() => updateWidget(widget, dayIndex + 1), 5000);
+  return widget;
 }
 
-// Récupération et analyse des données ICS
+// Récupération et affichage des événements
 const icsData = await fetchICSFile(icsURL);
 const events = parseICS(icsData);
-const weeklyEvents = getEventsThisWeek(events);
 
-// Création du widget
-let widget = new ListWidget();
-widget.setPadding(10, 10, 10, 10);
-
-// Style du widget
-const gradient = new LinearGradient();
-gradient.locations = [0, 1];
-gradient.colors = [
-  new Color('17A589'),
-  new Color('48C9B0')
-];
-widget.backgroundGradient = gradient;
-
-// Initialisation avec le jour actuel
-const todayIndex = new Date().getDay();
-updateWidget(widget, todayIndex);
-
-// Présentation du widget
-if (!config.runsInWidget) {
-  await widget.presentMedium();
-} else {
+if (config.runsInWidget) {
+  let widget = await createWidget(events);
   Script.setWidget(widget);
-  Script.complete();
+} else {
+  let widget = await createWidget(events);
+  await widget.presentMedium();
 }
+
+Script.complete();
