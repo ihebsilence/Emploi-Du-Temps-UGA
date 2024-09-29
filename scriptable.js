@@ -19,7 +19,8 @@ const scriptPath = fm.joinPath(libPath, filename);
 // Écrire le contenu du script dans un fichier local
 fm.writeString(scriptPath, content);
 
-// Importer et exécuter le script téléchargé
-const scriptModule = importModule(scriptPath);
-await scriptModule.createWidget(); // Assure-toi que ton script a une fonction createWidget() ou main()
+// Exécuter le script téléchargé
+const scriptContent = fm.readString(scriptPath);
+eval(scriptContent); // Exécuter le code du script
+
 Script.complete();
