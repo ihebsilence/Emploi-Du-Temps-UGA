@@ -1,25 +1,82 @@
-// URL du script à télécharger
-const url = 'https://raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps-UGA/refs/heads/main/emploidutemps.js';
+/*
 
-// Initialiser le gestionnaire de fichiers
-const fm = FileManager.local();
-const libPath = fm.joinPath(fm.libraryDirectory(), 'EmploiDuTemps'); // Répertoire pour le script
+~
 
-// Créer le répertoire s'il n'existe pas
-fm.createDirectory(libPath, true);
+Welcome to Weather Cal. Run this script to set up your widget.
 
-// Télécharger le contenu du script
-let req = new Request(url);
-let content = await req.loadString();
+Add or remove items from the widget in the layout section below.
 
-// Nom du fichier à sauvegarder
-const filename = url.split('/').pop();
-const scriptPath = fm.joinPath(libPath, filename);
+You can duplicate this script to create multiple widgets. Make sure to change the name of the script each time.
 
-// Écrire le contenu du script dans un fichier local
-fm.writeString(scriptPath, content);
+Happy scripting!
 
-// Importer et exécuter le script téléchargé
-const scriptModule = importModule(scriptPath);
-await scriptModule.main(); // Assure-toi que le script a une fonction main()
-Script.complete();
+~
+
+*/
+
+// Specify the layout of the widget items.
+const layout = `
+  
+  row 
+    column
+      date
+      sunset
+      battery
+      space
+      events
+    
+    column(90)
+      current
+      future
+      space
+       
+`
+
+/*
+ * CODE
+ * Be more careful editing this section. 
+ * =====================================
+ */
+
+// Names of Weather Cal elements.
+const codeFilename = "Weather Cal code"
+const gitHubUrl = "https://raw.githubusercontent.com/mzeryck/Weather-Cal/main/weather-cal-code.js"
+
+// Determine if the user is using iCloud.
+let files = FileManager.local()
+const iCloudInUse = files.isFileStoredIniCloud(module.filename)
+
+// If so, use an iCloud file manager.
+files = iCloudInUse ? FileManager.iCloud() : files
+
+// Determine if the Weather Cal code exists and download if needed.
+const pathToCode = files.joinPath(files.documentsDirectory(), codeFilename + ".js")
+if (!files.fileExists(pathToCode)) {
+  const req = new Request(gitHubUrl)
+  const codeString = await req.loadString()
+  files.writeString(pathToCode, codeString)
+}
+
+// Import the code.
+if (iCloudInUse) { await files.downloadFileFromiCloud(pathToCode) }
+const code = importModule(codeFilename)
+
+// Run the initial setup or settings menu.
+let preview
+if (config.runsInApp) {
+  preview = await code.runSetup(Script.name(), iCloudInUse, codeFilename, gitHubUrl)
+  if (!preview) return
+}
+
+// Set up the widget.
+const widget = await code.createWidget(layout, Script.name(), iCloudInUse)
+Script.setWidget(widget)
+
+// If we're in app, display the preview.
+if (config.runsInApp) {
+  if (preview == "small") { widget.presentSmall() }
+  else if (preview == "medium") { widget.presentMedium() }
+  else { widget.presentLarge() }
+}
+
+Script.complete()
