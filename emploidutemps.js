@@ -1,8 +1,7 @@
 // Variables used by Scriptable.
 // These must be at the very top of the file. Do not edit.
-// icon-color: orange; icon-glyph: hourglass-half;
+// icon-color: deep-green; icon-glyph: magic;
 
-// Remplace ceci par l'URL de ton calendrier
 const widgetInputRAW = args.widgetParameter;
 const icsURL = widgetInputRAW || 'https://raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps-UGA/main/ADE.ics';
 
@@ -57,6 +56,11 @@ const events = parseICS(icsData);
 // Filtrer les événements de la semaine
 const weeklyEvents = getEventsThisWeek(events);
 
+// Détermination du jour actuel pour le défilement
+const today = new Date();
+const dayOfWeek = today.getDay(); // 0 (dimanche) à 6 (samedi)
+const dayEvents = weeklyEvents.filter(event => event.start.getDay() === dayOfWeek);
+
 // Création du widget
 let widget = new ListWidget();
 widget.setPadding(10, 10, 10, 10);
@@ -70,12 +74,12 @@ gradient.colors = [
 ];
 widget.backgroundGradient = gradient;
 
-// Affichage des événements de la semaine
-widget.addText("Cours de la semaine").font = Font.boldSystemFont(16);
+// Affichage des événements du jour
+widget.addText("Cours du jour").font = Font.boldSystemFont(16);
 widget.addSpacer(5);
 
-if (weeklyEvents.length > 0) {
-  weeklyEvents.forEach(event => {
+if (dayEvents.length > 0) {
+  dayEvents.forEach(event => {
     const eventStack = widget.addStack();
     eventStack.layoutHorizontally();
     
@@ -93,7 +97,7 @@ if (weeklyEvents.length > 0) {
     eventTitleText.textColor = Color.white();
   });
 } else {
-  let noEventsText = widget.addText("Aucun cours cette semaine.");
+  let noEventsText = widget.addText("Aucun cours aujourd'hui.");
   noEventsText.font = Font.regularSystemFont(14);
   noEventsText.textColor = Color.white();
 }
@@ -107,3 +111,5 @@ if (!config.runsInWidget) {
   Script.setWidget(widget);
   Script.complete();
 }
+
+// Pour le défilement, tu pourrais envisager de programmer un autre script qui met à jour le widget chaque jour
