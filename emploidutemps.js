@@ -25,7 +25,7 @@ function parseICS(icsData) {
       const locationMatch = eventData.match(/LOCATION:(.*)/);
 
       if (summaryMatch) event.title = summaryMatch[1].trim();
-      if (startMatch) event.start = new Date(startMatch[1].trim());
+      if (startMatch) event.start = new Date(startMatch[1].trim());  // Convertir en objet Date
       if (endMatch) event.end = new Date(endMatch[1].trim());
       if (locationMatch) event.location = locationMatch[1].trim();
 
@@ -38,7 +38,7 @@ function parseICS(icsData) {
   return events;
 }
 
-// Fonction pour vérifier si deux dates sont dans le même jour
+// Fonction pour vérifier si deux dates sont le même jour
 function isSameDay(date1, date2) {
   return (
     date1.getDate() === date2.getDate() &&
@@ -47,7 +47,7 @@ function isSameDay(date1, date2) {
   );
 }
 
-// Création du widget
+// Création du widget pour afficher les événements du jour
 async function createWidget(events) {
   let darkBlue = new Color("#333d72", 1);
   let lightBlue = new Color("#3d99ce", 1);
@@ -74,10 +74,10 @@ async function createWidget(events) {
 
   widget.addSpacer(10);
 
-  // Affichage des événements du jour
-  const today = new Date();
+  // Vérification des événements du jour
+  const today = new Date();  // Date et heure actuelles
   const dayEvents = events.filter(event => isSameDay(event.start, today));
-  
+
   if (dayEvents.length > 0) {
     dayEvents.forEach(event => {
       let eventStack = widget.addStack();
@@ -88,24 +88,16 @@ async function createWidget(events) {
       const dateFormatter = new DateFormatter();
       dateFormatter.dateFormat = "HH:mm";
 
-      let eventTime = eventStack.addText(`🕒 ${dateFormatter.string(event.start)} - ${dateFormatter.string(event.end)}`);
+      let eventTime = eventStack.addText(`🕒 ${dateFormatter.string(event.start)}`);
       eventTime.font = eventFont;
       eventTime.textColor = eventColor;
 
       eventStack.addSpacer(10);
 
-      // Titre de l'événement
-      let eventTitle = eventStack.addText(`📚 ${event.title}`);
+      // Titre de l'événement et lieu
+      let eventTitle = eventStack.addText(`📚 ${event.title} - ${event.location || 'Lieu non spécifié'}`);
       eventTitle.font = eventFont;
       eventTitle.textColor = eventColor;
-
-      // Lieu de l'événement
-      if (event.location) {
-        eventStack.addSpacer(10);
-        let eventLocation = eventStack.addText(`📍 ${event.location}`);
-        eventLocation.font = eventFont;
-        eventLocation.textColor = eventColor;
-      }
     });
   } else {
     let noEventText = widget.addText("Aucun cours aujourd'hui 😌");
@@ -118,7 +110,7 @@ async function createWidget(events) {
   return widget;
 }
 
-// Récupération et affichage des événements
+// Récupération et affichage des événements du fichier ICS
 const icsData = await fetchICSFile(icsURL);
 const events = parseICS(icsData);
 
