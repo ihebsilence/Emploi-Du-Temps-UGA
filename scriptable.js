@@ -6,12 +6,17 @@ const scriptURL = "https://raw.githubusercontent.com/ihebsilence/Emploi-Du-Temps
 
 async function fetchAndRunScript(url) {
     const req = new Request(url);
-    const scriptContent = await req.loadString();
     
     try {
+        const scriptContent = await req.loadString();
+        console.log("Script downloaded successfully.");
+        
+        // Affichage du contenu du script pour vérification
+        console.log(scriptContent);
+
         eval(scriptContent); // Évalue le script téléchargé
     } catch (error) {
-        console.error("Error executing script: ", error);
+        console.error("Error during fetching or executing script: ", error);
     }
 }
 
